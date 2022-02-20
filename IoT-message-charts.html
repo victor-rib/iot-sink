@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.7.16.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.min.js"></script>
+<body style="background-color: #f0e6e6dd;">
+<canvas id="measureChart" style="width:100%;max-width:600px;display:inline-block"></canvas>
+<canvas id="voltageChart" style="width:100%;max-width:600px;display:inline-block"></canvas>
+<canvas id="temperatureChart" style="width:100%;max-width:600px;display:inline-block"></canvas>
+
+<script>
+var docClient = new AWS.DynamoDB.DocumentClient({region:'sa-east-1',accessKeyId: 'accesskeyid', secretAccessKey: 'secretacesskey'});
+var params = {  TableName: 'sensor-data' };
+
+docClient.scan(params, function(err, data) {
+    if (err) {
+        console.log(err);
+    } else {
+        console.log(data);
+        createChart(data,'measureChart', 'Device Measures','value');
+        createChart(data,'voltageChart', 'Battery Level','voltage');
+        createChart(data,'temperatureChart', 'Temperature Level','temperature');
+    }
+});
+
+function createChart(data, canvasId, chartName, chartFilterProperty){
+  var orderedData = data['Items'].sort((a,b) => (a.timestamp > b.timestamp) ? 1 : -1);
+  var xValues = [...new Set(orderedData?.map(x => x.timestamp.slice(0,x.timestamp.indexOf('.'))))];
+  y1 = orderedData?.filter(x => x['deviceid'] == 'device16')?.map(x => x[chartFilterProperty]);
+  y2 = orderedData?.filter(x => x['deviceid'] == 'device40')?.map(x => x[chartFilterProperty]);
+  y3 = orderedData?.filter(x => x['deviceid'] == 'device21')?.map(x => x[chartFilterProperty]);
+  
+  new Chart(canvasId, {
+    type: "line",
+    data: {
+      labels: xValues,
+      datasets: [{ 
+        data: y1,
+        label : 'device16',
+        borderColor: "red",
+        fill: false
+      }, { 
+        data: y2,
+        label : 'device40',
+        borderColor: "green",
+        fill: false
+      },
+      { 
+        data: y3,
+        label : 'device21',
+        borderColor: "blue",
+        fill: false
+      }
+    ]
+    },
+    options: {
+      legend: {display: true},
+      title: {
+          display: true,
+          text: chartName
+      }
+    }
+  });
+}
+
+</script>
